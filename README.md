@@ -2,9 +2,36 @@
 
 Download the installers from this repository's [Releases](https://github.com/markgally/mark-codex-installers/releases) page. Cloning the repository is unnecessary.
 
+These builds are unsigned. macOS and Windows may warn before they open.
+
 ## Which file to download
 
-- Mac computer: download `Mark.Codex_0.2.0_aarch64.zip`. This is the existing 0.2.0 application archive, not a v0.2.7 DMG. It contains only `Mark Codex.app`. It runs on Apple Silicon Macs.
-- Windows computer: download `MARK-Codex-Windows-x64-Setup-0.2.7.zip`. This is the 64-bit Windows setup archive. It also includes `MARK-Codex-Windows-Source-0.2.7.zip`, so downloading the setup archive also downloads the Windows source.
+- Mac computer: download `Mark.Codex_0.2.0_aarch64.zip`. This is the existing 0.2.0 application archive, not a v0.2.7 DMG. It contains only `Mark Codex.app`. GitHub lists it with a dot in place of the space in `Mark Codex`.
+- Windows computer: download `MARK-Codex-Windows-x64-Setup-0.2.7.zip`. This is the 64-bit Windows setup archive for version 0.2.7. It also includes `MARK-Codex-Windows-Source-0.2.7.zip`, so the Windows source is in that same download.
 
-The Mac archive is listed on GitHub with a dot in place of the space in `Mark Codex`. It is the same application file.
+Codex sign-in, API keys, Google accounts, and conversations are not inside either file. Each computer signs in on its own.
+
+## Mac
+
+Requirements: Apple Silicon and macOS 13 or newer.
+
+1. Unzip `Mark.Codex_0.2.0_aarch64.zip`.
+2. Move `Mark Codex.app` to Applications.
+3. If macOS blocks the first open, right-click the app and choose Open.
+4. Allow the microphone and speech recognition when macOS asks.
+
+The wake phrase follows the assistant name in Settings. The default is “Hey Mark.”
+
+## Windows
+
+Requirements: 64-bit Windows and the [Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). Node.js and Rust are not required to run the app.
+
+1. Extract the whole ZIP into a new folder. Do not run it from inside the ZIP.
+2. Run `Check Windows requirements.cmd`.
+3. Run `1 - Set up and sign in.cmd`. The first run downloads the official Codex runtime, checks its checksum, and opens Codex sign-in. Internet is required.
+4. Run `2 - Start MARK Codex.cmd`.
+5. Allow the desktop microphone in Windows Settings. Wake phrases also need an English speech language pack.
+
+Keep `bin`, `scripts`, and `wake-helper` beside `Mark Codex.exe`. If the transparent window does not display, use `Start with dark background.cmd`. Optional Gmail, Calendar, and Sheets access is started with `3 - Google Workspace setup.cmd`.
+
+OpenAI API mode needs your own `OPENAI_API_KEY`. Claude Chat also needs `ANTHROPIC_API_KEY`. Restart the app after changing those variables.
