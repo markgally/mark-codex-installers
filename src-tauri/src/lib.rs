@@ -1226,8 +1226,8 @@ async fn ensure_runtime(
     if let Some(model) = model {
         thread_options["model"] = Value::String(model.to_owned());
     }
-    let started = if let Some(thread_id) = resume_thread_id.filter(|value| !value.trim().is_empty())
-    {
+    let resume_thread_id = resume_thread_id.filter(|value| !value.trim().is_empty());
+    let started = if let Some(thread_id) = resume_thread_id {
         let mut resume_options = thread_options.clone();
         resume_options["threadId"] = Value::String(thread_id.to_owned());
         runtime.request("thread/resume", resume_options).await.map_err(|error| {
@@ -1247,7 +1247,10 @@ async fn ensure_runtime(
     let journal = started.pointer("/thread/path").and_then(Value::as_str)
         .map(PathBuf::from).filter(|path| path.is_absolute())
         .ok_or("Codex did not return the saved conversation path")?;
-    runtime.memory.configure(&thread_id, &cwd, &journal).await?;
+    runtime
+        .memory
+        .configure(&thread_id, &cwd, &journal, resume_thread_id.is_none())
+        .await?;
     *state.runtime.lock().await = Some(runtime.clone());
     context_manager::start(&runtime);
     Ok(runtime)

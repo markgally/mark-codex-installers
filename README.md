@@ -42,10 +42,11 @@ The wake phrase follows the assistant name in Settings. The default is “Hey Ma
 Requirements: 64-bit Windows and the [Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). Node.js and Rust are not required to run the app.
 
 1. Extract the whole ZIP into a new folder. Do not run it from inside the ZIP.
-2. Run `Check Windows requirements.cmd`.
-3. Run `1 - Set up and sign in.cmd`. The first run downloads the official Codex runtime, checks its checksum, and opens Codex sign-in. Internet is required.
-4. Run `2 - Start MARK Codex.cmd`.
-5. Allow the desktop microphone in Windows Settings. Wake phrases also need an English speech language pack.
+2. Run `Apply fixes on this PC.cmd` before starting MARK. It installs the Visual C++ runtime when `gws.exe` needs it and repairs conversation startup. Approve the administrator prompt.
+3. Run `Check Windows requirements.cmd`.
+4. Run `1 - Set up and sign in.cmd`. The first run downloads the official Codex runtime, checks its checksum, and opens Codex sign-in. Internet is required.
+5. Run `2 - Start MARK Codex.cmd`.
+6. Allow the desktop microphone in Windows Settings. Wake phrases also need an English speech language pack.
 
 Keep `bin`, `scripts`, and `wake-helper` beside `Mark Codex.exe`. If the transparent window does not display, use `Start with dark background.cmd`. Optional Gmail, Calendar, and Sheets access is started with `3 - Google Workspace setup.cmd`.
 
