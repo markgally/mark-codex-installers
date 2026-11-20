@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSCameraUsageDescription</key>
+	<string>This assistant does not capture video; this declaration allows WebKit to initialize its WebRTC media permission path.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This assistant locally listens for your configured wake phrase; official Codex Voice handles the conversation.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>This assistant locally recognizes its configured wake phrase before opening official Codex Voice.</string>
+</dict>
+</plist>

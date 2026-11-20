@@ -1,8 +1,23 @@
-# M.A.R.K. Codex installers
+# M.A.R.K. Codex
 
-Download the installers from this repository's [Releases](https://github.com/markgally/mark-codex-installers/releases) page. Cloning the repository is unnecessary.
+Mark Codex is a desktop voice assistant for Codex. The source in this repository is GPL-3 and is based on [jarvis-codex](https://github.com/Big-Guan/jarvis-codex) by Big-Guan.
 
-These builds are unsigned. macOS and Windows may warn before they open.
+This page is the project homepage. The privacy policy is [PRIVACY.md](PRIVACY.md). Downloads are on the [Releases](https://github.com/markgally/mark-codex-installers/releases) page.
+
+The current release files were built before SignPath signing and are still unsigned. macOS and Windows may warn before they open.
+
+## Code signing policy
+
+Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+
+The certificate is issued to SignPath Foundation. The only file submitted for that signature is `Mark Codex.exe`, built from this repository by the Windows executable workflow. The Codex runtime and `gws.exe` are separate programs and are not signed with this certificate.
+
+- Committers and reviewers: [Mark Gally Reboton](https://github.com/markgally)
+- Approvers: [Mark Gally Reboton](https://github.com/markgally)
+
+## Source build
+
+The Windows executable workflow installs the dependencies and runs `npm run build` on `windows-latest`. Its artifact is `Mark Codex.exe`. Build tools for a local Windows build are described in [README-WINDOWS.md](README-WINDOWS.md).
 
 ## Which file to download
 

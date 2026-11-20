@@ -2,9 +2,15 @@
 *.dmg
 *.zip
 *.exe
+*.dll
 *.app
 .env
 .env.*
 credentials*
 *.pem
 *.key
+*.pfx
+node_modules/
+dist/
+src-tauri/target/
+verification/

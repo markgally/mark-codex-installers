@@ -1,0 +1,28 @@
+{
+  "name": "jarvis-codex",
+  "version": "0.2.7",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "wake:build": "node scripts/build-native-wake.mjs",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "web:dev": "vite",
+    "web:build": "tsc && vite build",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm test && npm run web:build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "predev": "npm run wake:build",
+    "prebuild": "npm run wake:build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

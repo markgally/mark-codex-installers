@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Mark Codex",
+  "version": "0.2.7",
+  "identifier": "com.bigguan.jarvis-codex",
+  "build": {
+    "beforeDevCommand": "npm run web:dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run web:build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "MARK \u00b7 CODEX",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 620,
+        "center": true,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "backgroundColor": "#02070b00",
+        "visible": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; font-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Wake Jarvis and work through Codex",
+    "resources": [
+      "wake-helper/windows-wake.ps1",
+      "bin/"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}
