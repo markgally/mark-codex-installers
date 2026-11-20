@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use std::{
     collections::HashSet,
     fs::{self, File, OpenOptions},
-    io::{ErrorKind, Read, Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -48,8 +48,6 @@ struct Checkpoint {
     thread: String,
     workspace: String,
     journal: PathBuf,
-    #[serde(skip)]
-    journal_pending: bool,
     cursor: u64,
     archived_before: u64,
     revision: u64,
@@ -81,19 +79,12 @@ pub struct MemoryStore {
     path: PathBuf,
     state: Mutex<Checkpoint>,
 }
-
-fn same_location(left: &Path, right: &Path) -> bool {
-    left == right
-        || matches!((left.canonicalize(), right.canonicalize()), (Ok(left), Ok(right)) if left == right)
-}
-
 impl MemoryStore {
     pub fn open(
         directory: &Path,
         thread: &str,
         workspace: &str,
         journal: &Path,
-        new_thread: bool,
     ) -> Result<Self, String> {
         if thread.is_empty()
             || !thread
@@ -121,7 +112,6 @@ impl MemoryStore {
                 thread: thread.into(),
                 workspace: workspace.into(),
                 journal: journal.into(),
-                journal_pending: new_thread,
                 cursor: 0,
                 archived_before: 0,
                 revision: 0,
@@ -135,8 +125,8 @@ impl MemoryStore {
         };
         if state.version != 1
             || state.thread != thread
-            || !same_location(Path::new(&state.workspace), Path::new(workspace))
-            || !same_location(&state.journal, journal)
+            || state.workspace != workspace
+            || state.journal != journal
         {
             return Err(
                 "Conversation checkpoint belongs to a different thread or workspace".into(),
@@ -186,16 +176,9 @@ impl MemoryStore {
             .state
             .lock()
             .map_err(|_| "Conversation checkpoint lock failed")?;
-        let mut file = match File::open(&guard.journal) {
-            Ok(file) => file,
-            // Codex returns the journal path before it writes a new thread's history.
-            Err(error) if guard.journal_pending && error.kind() == ErrorKind::NotFound => {
-                return Ok(());
-            }
-            Err(error) => return Err(format!("Could not read saved conversation: {error}")),
-        };
-        guard.journal_pending = false;
         let mut state = guard.clone();
+        let mut file = File::open(&state.journal)
+            .map_err(|e| format!("Could not read saved conversation: {e}"))?;
         let length = file.metadata().map_err(|e| e.to_string())?.len();
         if length < state.cursor {
             return Err(
@@ -308,8 +291,7 @@ impl MemoryStore {
             .rev()
             .map(|e| json!({"role":e.role,"text":e.text}))
             .collect();
-        let journal = (!state.journal_pending).then_some(state.journal.as_path());
-        context::budgeted_items(profile, recent, Some(&state.summary), journal)
+        context::budgeted_items(profile, recent, Some(&state.summary), Some(&state.journal))
     }
 
     pub fn summary_plan(&self) -> Option<SummaryPlan> {
@@ -451,55 +433,16 @@ mod tests {
     fn summary() -> &'static str {
         r#"{"goals":["inspection"],"decisions":["Friday"],"facts":[],"unfinished_tasks":["confirm inspection"]}"#
     }
-    #[cfg(windows)]
-    #[test]
-    fn resume_accepts_a_verbatim_path_to_the_same_journal() {
-        let (directory, journal) = fixture();
-        let verbatim = journal.canonicalize().unwrap();
-        let standard = Path::new(verbatim.to_str().unwrap().strip_prefix(r"\\?\").unwrap());
-        let memory = directory.join("memory");
-
-        MemoryStore::open(&memory, "thread", "workspace", standard, true).unwrap();
-        MemoryStore::open(&memory, "thread", "workspace", &verbatim, false).unwrap();
-        let other = directory.join("other.jsonl");
-        fs::write(&other, "").unwrap();
-        assert!(MemoryStore::open(&memory, "thread", "workspace", &other, false).is_err());
-        fs::remove_dir_all(directory).unwrap();
-    }
-    #[test]
-    fn new_thread_can_read_memory_before_codex_creates_its_journal() {
-        let (directory, journal) = fixture();
-        fs::remove_file(&journal).unwrap();
-        let memory = directory.join("memory");
-        assert!(MemoryStore::open(&memory, "old", "workspace", &journal, false).is_err());
-
-        let store = MemoryStore::open(&memory, "new", "workspace", &journal, true).unwrap();
-        let initial = store.initial_items(&AssistantProfile::default()).unwrap();
-        assert_eq!(initial.as_array().unwrap().len(), 1);
-        assert!(!store.path.exists());
-        assert!(!journal.exists());
-
-        fs::write(&journal, "").unwrap();
-        append(&journal, 2);
-        store.sync().unwrap();
-        assert_eq!(store.state.lock().unwrap().recent.len(), 2);
-        assert!(store.path.is_file());
-
-        fs::remove_file(&journal).unwrap();
-        assert!(store.sync().is_err());
-        assert!(MemoryStore::open(&memory, "new", "workspace", &journal, true).is_err());
-        fs::remove_dir_all(directory).unwrap();
-    }
     #[test]
     fn restart_keeps_summary_and_only_messages_after_its_checkpoint() {
         let (p, j) = fixture();
         append(&j, 60);
-        let s = MemoryStore::open(&p.join("memory"), "thread-a", "workspace", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "thread-a", "workspace", &j).unwrap();
         let plan = s.summary_plan().unwrap();
         assert_eq!(plan.messages.len(), 20);
         assert!(s.commit_summary(&plan, summary()).unwrap());
         drop(s);
-        let s = MemoryStore::open(&p.join("memory"), "thread-a", "workspace", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "thread-a", "workspace", &j).unwrap();
         let items = s.initial_items(&AssistantProfile::default()).unwrap();
         let a = items.as_array().unwrap();
         assert_eq!(a.len(), 42);
@@ -514,7 +457,7 @@ mod tests {
     fn failed_or_stale_summary_does_not_discard_recent_messages() {
         let (p, j) = fixture();
         append(&j, 60);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         let plan = s.summary_plan().unwrap();
         assert!(s.commit_summary(&plan, "invalid").is_err());
         assert_eq!(s.state.lock().unwrap().recent.len(), 60);
@@ -526,7 +469,7 @@ mod tests {
     fn reads_each_record_once_and_retries_partial_tail() {
         let (p, j) = fixture();
         append(&j, 2);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         s.sync().unwrap();
         assert_eq!(s.state.lock().unwrap().recent.len(), 2);
         let record=json!({"type":"realtime_item","payload":{"type":"transcript_segment","role":"user","text":"new detail"}}).to_string();
@@ -543,7 +486,7 @@ mod tests {
     fn context_budget_includes_summary_and_profile() {
         let (p, j) = fixture();
         append(&j, 70);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         s.commit_summary(&s.summary_plan().unwrap(), summary())
             .unwrap();
         let items = s
@@ -567,12 +510,12 @@ mod tests {
     fn separate_threads_and_workspaces_cannot_reuse_a_checkpoint() {
         let (p, j) = fixture();
         append(&j, 60);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         s.commit_summary(&s.summary_plan().unwrap(), summary())
             .unwrap();
-        assert!(MemoryStore::open(&p.join("memory"), "a", "other", &j, false).is_err());
-        assert!(MemoryStore::open(&p.join("memory"), "../bad", "w", &j, false).is_err());
-        let other = MemoryStore::open(&p.join("memory"), "b", "w", &j, false).unwrap();
+        assert!(MemoryStore::open(&p.join("memory"), "a", "other", &j).is_err());
+        assert!(MemoryStore::open(&p.join("memory"), "../bad", "w", &j).is_err());
+        let other = MemoryStore::open(&p.join("memory"), "b", "w", &j).unwrap();
         assert!(other.state.lock().unwrap().summary.is_empty());
         fs::remove_dir_all(p).unwrap();
     }
@@ -592,13 +535,13 @@ mod tests {
     fn recovers_valid_backup_after_interrupted_or_corrupt_checkpoint() {
         let (p, j) = fixture();
         append(&j, 60);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         s.commit_summary(&s.summary_plan().unwrap(), summary())
             .unwrap();
         s.mark_injected(1).unwrap();
         fs::write(&s.path, "broken").unwrap();
         drop(s);
-        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j, false).unwrap();
+        let s = MemoryStore::open(&p.join("memory"), "a", "w", &j).unwrap();
         assert!(!s.state.lock().unwrap().summary.is_empty());
         fs::remove_dir_all(p).unwrap();
     }

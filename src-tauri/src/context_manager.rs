@@ -48,7 +48,6 @@ impl ContextManager {
         thread: &str,
         workspace: &str,
         journal: &Path,
-        new_thread: bool,
     ) -> Result<(), String> {
         let (directory, thread, workspace, journal) = (
             self.directory.clone(),
@@ -57,7 +56,7 @@ impl ContextManager {
             journal.to_owned(),
         );
         let store = tokio::task::spawn_blocking(move || {
-            MemoryStore::open(&directory, &thread, &workspace, &journal, new_thread)
+            MemoryStore::open(&directory, &thread, &workspace, &journal)
         })
         .await
         .map_err(|e| e.to_string())??;
