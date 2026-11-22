@@ -106,9 +106,13 @@ pub(crate) fn window_is_compact(state: State<'_, WindowState>) -> bool {
 }
 
 #[tauri::command]
-pub(crate) fn hide_window(app: AppHandle) -> Result<(), String> {
+pub(crate) fn minimize_or_hide_window(app: AppHandle) -> Result<(), String> {
     let window = app.get_webview_window("main").ok_or("The main window is unavailable")?;
-    window.hide().map_err(|error| error.to_string())
+    #[cfg(target_os = "windows")]
+    let result = window.minimize();
+    #[cfg(not(target_os = "windows"))]
+    let result = window.hide();
+    result.map_err(|error| error.to_string())
 }
 
 #[tauri::command]

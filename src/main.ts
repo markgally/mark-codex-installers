@@ -156,6 +156,9 @@ voiceAudio.autoplay = true;
 const previewParams = new URLSearchParams(window.location.search);
 const tauriInternals = (window as Window & { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__;
 const currentWindow = typeof tauriInternals?.invoke === "function" ? getCurrentWindow() : null;
+const isWindows = navigator.userAgent.includes("Windows");
+const windowDismissAction = isWindows ? "minimize" : "hide";
+const windowDismissLabel = isWindows ? "Minimize window" : "Hide window";
 const previewModeValue = previewParams.get("preview");
 const previewActionValue = previewParams.get("action");
 const visualPreviewMode: Mode = ["booting", "ready", "voice-starting", "listening", "working", "speaking", "degraded", "stopped"].includes(previewModeValue ?? "")
@@ -175,7 +178,7 @@ if (currentWindow) {
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <main class="shell" data-mode="booting" data-appearance="helmet" data-mask="segmented" data-effect-particles="on" data-effect-talking-mask="on" data-effect-eye-track="on" data-effect-scan="on">
   <nav class="window-controls" aria-label="Window controls">
-    <button id="window-hide" type="button" aria-label="Hide window" title="Minimize — hide window"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10"/></svg></button>
+    <button id="window-hide" type="button" aria-label="${windowDismissLabel}" title="${windowDismissLabel}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10"/></svg></button>
     <button id="window-compact" type="button" aria-label="Compact window" title="Compact floating window" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4" width="12" height="12" rx="1.5"/><path class="restore-window-mark" d="M7 4V2h11v11h-2"/></svg></button>
     <button id="window-quit" type="button" aria-label="Quit Mark Codex" title="Close — quit Mark Codex"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button>
     <span id="window-control-status" role="alert" aria-live="polite"></span>
@@ -304,8 +307,8 @@ async function toggleWindowMode() {
   }
 }
 $("#window-hide").addEventListener("click", () => {
-  if (currentWindow) void invoke("hide_window").catch((error) => {
-    $("#window-control-status").textContent = `Could not hide the window: ${String(error)}`;
+  if (currentWindow) void invoke("minimize_or_hide_window").catch((error) => {
+    $("#window-control-status").textContent = `Could not ${windowDismissAction} the window: ${String(error)}`;
   });
 });
 compactButton.addEventListener("click", () => void toggleWindowMode());
@@ -316,7 +319,7 @@ if (currentWindow) {
   void invoke<boolean>("window_is_compact").then(applyWindowMode);
   void listen<boolean>("window-mode-changed", ({ payload }) => applyWindowMode(payload));
   characterRig.addEventListener("pointerdown", (event) => {
-    if (event.button === 0 && (compactWindow || navigator.userAgent.includes("Windows"))) {
+    if (event.button === 0 && (compactWindow || isWindows)) {
       void currentWindow.startDragging();
     }
   });

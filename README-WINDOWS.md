@@ -1,8 +1,8 @@
-# MARK Codex for Windows 0.2.7
+# MARK Codex for Windows 0.2.8
 
-This Windows x64 edition includes the same interface as Mac 0.2.7: the original
-helmet, Cyber Boy, Cyber Girl, blinking and reactions, customizable assistant
-identity and form of address, and Hide / Compact-Restore / Quit controls.
+This Windows x64 edition includes the original helmet, Cyber Boy, Cyber Girl,
+blinking and reactions, customizable assistant identity and form of address,
+and Minimize / Compact-Restore / Quit controls.
 The default appearance remains the original helmet.
 
 ## Run the ZIP release
@@ -11,19 +11,21 @@ Extract the whole setup ZIP into a new folder on the Windows laptop.
 Run `1 - Set up and sign in.cmd`, then `2 - Start MARK Codex.cmd`.
 The app and Google Workspace CLI are included. First setup downloads the pinned
 official Codex runtime and validates its SHA-256 before installing it locally.
+The launcher checks for missing runtime support files each time it starts.
 No Node.js or Rust is needed to run the release. Edge WebView2 Runtime is required.
 
 Exit the old MARK version before opening this one. Existing settings use the same
 application identity; each Windows user supplies their own sign-in and API keys.
+Saved conversations resume when Windows returns an equivalent path to their
+existing journal.
 
 ## Window controls
 
-- Hide keeps MARK running. Open MARK again to show its existing window.
+- Minimize keeps MARK running on the taskbar. Select its taskbar icon to restore the window.
 - Compact creates a 360 x 480 floating window at the current screen's bottom-right,
   above the taskbar. Clicking Restore returns the previous window size and position.
 - Quit exits MARK and stops its wake listener. It also works from Windows Close.
-- The Windows single-instance handler restores the hidden running window instead
-  of starting duplicate copies.
+- Opening MARK again brings the existing window to the foreground.
 - Opening Settings from compact mode restores the full window for readable fields.
 
 Transparent native-window, WebView startup-color, and CSS settings are aligned.
@@ -55,6 +57,14 @@ with `npm ci` and `npm run web:build`, then run:
 `cargo xwin build --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc --release --features tauri/custom-protocol --locked`.
 The custom-protocol feature embeds the production frontend into the executable.
 Copy the executable with its `bin/` and `wake-helper/` resources for the portable ZIP.
+
+## Package a portable release
+
+After building the release executable from a committed revision, run
+`scripts/package-windows-setup.ps1` with the executable, the verified Windows
+0.2.7 setup ZIP as `-BaseArchive`, and an `-OutputDirectory`. The script reads
+the version from the source commit and includes the matching source ZIP and
+SHA-256 manifest.
 
 ## Validation boundary
 

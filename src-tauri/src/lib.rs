@@ -1634,7 +1634,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             window_controls::window_is_compact,
-            window_controls::hide_window,
+            window_controls::minimize_or_hide_window,
             window_controls::toggle_window_mode,
             window_controls::quit_application,
             opaque_window,

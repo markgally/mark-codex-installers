@@ -79,6 +79,17 @@ pub struct MemoryStore {
     path: PathBuf,
     state: Mutex<Checkpoint>,
 }
+
+fn is_windows_path_alias(saved: &Path, current: &Path) -> bool {
+    cfg!(windows)
+        && saved.is_absolute()
+        && current.is_absolute()
+        && matches!(
+            (saved.canonicalize(), current.canonicalize()),
+            (Ok(saved), Ok(current)) if saved == current
+        )
+}
+
 impl MemoryStore {
     pub fn open(
         directory: &Path,
@@ -125,8 +136,9 @@ impl MemoryStore {
         };
         if state.version != 1
             || state.thread != thread
-            || state.workspace != workspace
-            || state.journal != journal
+            || (state.workspace != workspace
+                && !is_windows_path_alias(Path::new(&state.workspace), Path::new(workspace)))
+            || (state.journal != journal && !is_windows_path_alias(&state.journal, journal))
         {
             return Err(
                 "Conversation checkpoint belongs to a different thread or workspace".into(),
@@ -518,6 +530,62 @@ mod tests {
         let other = MemoryStore::open(&p.join("memory"), "b", "w", &j).unwrap();
         assert!(other.state.lock().unwrap().summary.is_empty());
         fs::remove_dir_all(p).unwrap();
+    }
+    #[cfg(windows)]
+    #[test]
+    fn resumes_a_checkpoint_from_windows_path_aliases() {
+        let (directory, journal) = fixture();
+        let workspace = directory.canonicalize().unwrap();
+        let journal = journal.canonicalize().unwrap();
+        let without_verbatim_prefix = |path: &Path| {
+            let value = path.to_str().unwrap();
+            if let Some(share_path) = value.strip_prefix(r"\\?\UNC\") {
+                format!(r"\\{share_path}")
+            } else {
+                value.strip_prefix(r"\\?\").unwrap().to_owned()
+            }
+        };
+        let saved_workspace = without_verbatim_prefix(&workspace);
+        let saved_journal = without_verbatim_prefix(&journal);
+        let memory = directory.join("memory");
+
+        append(&journal, 60);
+        let original = MemoryStore::open(
+            &memory,
+            "thread",
+            &saved_workspace,
+            Path::new(&saved_journal),
+        )
+        .unwrap();
+        assert!(original
+            .commit_summary(&original.summary_plan().unwrap(), summary())
+            .unwrap());
+        let checkpoint = fs::read(&original.path).unwrap();
+        drop(original);
+
+        let resumed =
+            MemoryStore::open(&memory, "thread", workspace.to_str().unwrap(), &journal).unwrap();
+        assert_eq!(fs::read(&resumed.path).unwrap(), checkpoint);
+
+        let other_workspace = directory.join("other-workspace");
+        fs::create_dir(&other_workspace).unwrap();
+        let other_journal = directory.join("other-journal.jsonl");
+        fs::copy(&journal, &other_journal).unwrap();
+        assert!(MemoryStore::open(
+            &memory,
+            "thread",
+            other_workspace.to_str().unwrap(),
+            &journal,
+        )
+        .is_err());
+        assert!(MemoryStore::open(
+            &memory,
+            "thread",
+            workspace.to_str().unwrap(),
+            &other_journal,
+        )
+        .is_err());
+        fs::remove_dir_all(directory).unwrap();
     }
     #[test]
     fn token_trigger_uses_current_context_not_lifetime_usage() {
