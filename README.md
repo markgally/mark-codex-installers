@@ -22,7 +22,7 @@ The Windows executable workflow installs the dependencies and runs `npm run buil
 ## Which file to download
 
 - Mac computer: download `Mark.Codex_0.2.0_aarch64.zip`. This is the existing 0.2.0 application archive, not a v0.2.7 DMG. It contains only `Mark Codex.app`. GitHub lists it with a dot in place of the space in `Mark Codex`.
-- Windows computer: choose the Windows x64 setup ZIP on the Releases page. Build the 0.2.9 source branch for the fix that lets new conversations start before Codex writes their first journal record.
+- Windows computer: choose the Windows x64 setup ZIP on the Releases page. The 0.2.10 source branch adds browser-based ChatGPT sign-in and retains the fix that lets new conversations start before Codex writes their first journal record.
 
 Codex sign-in, API keys, Google accounts, and conversations are not inside either file. Each computer signs in on its own.
 

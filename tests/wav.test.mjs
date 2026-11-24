@@ -17,7 +17,10 @@ test("Voice uses Codex app-server V3 WebRTC directly", () => {
   assert.match(backend, /"version":\s*"v3"/);
   assert.match(backend, /"transport":\s*\{"type":\s*"webrtc"/);
   assert.match(backend, /"app-server",\s*"--enable",\s*"realtime_conversation",\s*"--stdio"/);
-  assert.doesNotMatch(frontend, /ChatGPT.*button|hotkey/i);
+  const voiceControls = frontend.match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
+  assert.ok(voiceControls);
+  assert.doesNotMatch(voiceControls, /ChatGPT.*button/i);
+  assert.doesNotMatch(frontend, /hotkey/i);
 });
 
 test("wake phrase opens the same direct Voice path", () => {

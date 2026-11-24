@@ -220,6 +220,15 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </footer>
   <div id="degraded-banner" class="degraded-banner" hidden><b id="assistant-permission-title">MARK NEEDS PERMISSION</b><span id="degraded-copy">Allow microphone and speech recognition access to get started.</span></div>
   <dialog id="approval"><h2>Confirm high-risk action</h2><p id="approval-copy">Codex is requesting approval for an action.</p><div><button id="deny">Deny</button><button id="approve">Allow once</button></div></dialog>
+  <dialog id="chatgpt-sign-in" aria-labelledby="chatgpt-sign-in-title" aria-describedby="chatgpt-sign-in-description">
+    <h2 id="chatgpt-sign-in-title">Sign in with ChatGPT</h2>
+    <p id="chatgpt-sign-in-description">Connect your ChatGPT account to use Codex in Mark. Sign-in opens in your browser.</p>
+    <p id="chatgpt-sign-in-status" role="status"></p>
+    <div class="sign-in-actions">
+      <button id="chatgpt-sign-in-start" type="button">Sign in with ChatGPT</button>
+      <button id="chatgpt-sign-in-dismiss" type="button">Not now</button>
+    </div>
+  </dialog>
   <dialog id="settings-dialog">
     <h2 id="assistant-system-title">MARK SYSTEM</h2>
     <dl><dt>Wake phrase</dt><dd id="wake-phrase-label">Hey Mark / Hi Mark</dd><dt>Wake listener</dt><dd id="wake-auth">Checking…</dd><dt id="thread-label">Codex thread</dt><dd id="thread-id">—</dd><dt>Workspace</dt><dd id="workspace">—</dd><dt>Permission</dt><dd id="permission-mode-label">—</dd><dt>Provider</dt><dd id="provider-label">—</dd><dt>Voice status</dt><dd id="voice-auth">Checking…</dd><dt>Google Workspace</dt><dd id="google-workspace-status">Checking…</dd></dl>
@@ -253,10 +262,16 @@ const banner = $("#degraded-banner") as HTMLDivElement;
 const mic = $("#mic") as HTMLButtonElement;
 const approval = $("#approval") as HTMLDialogElement;
 const settings = $("#settings-dialog") as HTMLDialogElement;
+const chatgptSignIn = $<HTMLDialogElement>("#chatgpt-sign-in");
+const startSignIn = $<HTMLButtonElement>("#chatgpt-sign-in-start");
+const dismissSignIn = $<HTMLButtonElement>("#chatgpt-sign-in-dismiss");
+const signInStatus = $("#chatgpt-sign-in-status");
+let codexSignInRequired = false;
 const modelOptions = (values: readonly string[], defaultLabel?: string) => values.map((value) =>
   `<option value="${value}">${value || defaultLabel}</option>`).join("");
 settings.querySelector(".provider-setting")!.insertAdjacentHTML("afterend", `
   <div id="codex-model-settings" class="model-settings">
+    <button id="open-chatgpt-sign-in" type="button">Sign in with ChatGPT</button>
     <label>Codex model<select id="codex-model">${modelOptions(codexModels, "Codex default")}</select></label>
     <label>Codex voice<select id="codex-voice">${modelOptions(CODEX_VOICES)}</select></label>
     <small>Models refresh from Codex when Settings opens. Availability is confirmed when a request runs. Model choice applies to the next Codex turn; voice choice applies to a new voice session.</small>
@@ -1083,6 +1098,7 @@ async function startDirectVoice({ coldStart = false } = {}) {
     window.setTimeout(() => setMode("listening"), FORMATION_DURATION);
     return;
   }
+  if (promptForCodexSignIn()) return;
   if (voiceStartInFlight || peer || state.directVoice?.voiceActive || claudeVoiceActive) return;
   const voiceProvider = provider;
   voiceStartInFlight = true;
@@ -1301,6 +1317,7 @@ if (currentWindow) {
 $("#command-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const input = $("#command-input") as HTMLInputElement, text = input.value.trim();
   if (!text) return;
+  if (promptForCodexSignIn()) return;
   state.manualStop = false;
   transcript.textContent = text;
   input.value = "";
@@ -1496,6 +1513,77 @@ function restoreCommittedAvatar() {
   prepareVisualParticles();
 }
 
+function openChatGptSignIn() {
+  if (chatgptSignIn.open) return;
+  signInStatus.textContent = "";
+  chatgptSignIn.showModal();
+}
+
+function promptForCodexSignIn(): boolean {
+  if (!currentWindow || provider !== "codex" || !codexSignInRequired) return false;
+  openChatGptSignIn();
+  return true;
+}
+
+async function checkCodexSignIn(showPrompt: boolean) {
+  if (!currentWindow || provider !== "codex") return;
+  try {
+    codexSignInRequired = await invoke<boolean>("codex_sign_in_required");
+    $<HTMLButtonElement>("#open-chatgpt-sign-in").hidden = !codexSignInRequired;
+    if (showPrompt) promptForCodexSignIn();
+  } catch (error) {
+    console.warn("Could not check Codex sign-in", error);
+  }
+}
+
+startSignIn.addEventListener("click", async () => {
+  startSignIn.disabled = true;
+  dismissSignIn.textContent = "Cancel sign-in";
+  signInStatus.textContent = "Complete sign-in in your browser.";
+  try {
+    if (await invoke<boolean>("sign_in_with_chatgpt")) {
+      codexSignInRequired = false;
+      $<HTMLButtonElement>("#open-chatgpt-sign-in").hidden = true;
+      chatgptSignIn.close();
+      response.textContent = "Codex is ready.";
+    } else {
+      signInStatus.textContent = "Sign-in canceled.";
+    }
+  } catch (error) {
+    signInStatus.textContent = String(error);
+  } finally {
+    startSignIn.disabled = false;
+    dismissSignIn.disabled = false;
+    dismissSignIn.textContent = "Not now";
+  }
+});
+
+dismissSignIn.addEventListener("click", async () => {
+  if (!startSignIn.disabled) {
+    chatgptSignIn.close();
+    return;
+  }
+  dismissSignIn.disabled = true;
+  try {
+    await invoke("cancel_chatgpt_login");
+  } catch (error) {
+    signInStatus.textContent = String(error);
+    dismissSignIn.disabled = false;
+  }
+});
+
+chatgptSignIn.addEventListener("cancel", (event) => {
+  if (!startSignIn.disabled) return;
+  event.preventDefault();
+  dismissSignIn.click();
+});
+
+$("#open-chatgpt-sign-in").addEventListener("click", () => {
+  if (!currentWindow) return;
+  settings.close();
+  openChatGptSignIn();
+});
+
 $("#settings").addEventListener("click", async () => {
   if (compactWindow) {
     await toggleWindowMode();
@@ -1526,6 +1614,11 @@ settings.addEventListener("change", (event) => {
   if (target.name === "appearance" || target.name === "mask-style" || target.id.startsWith("effect-")) previewAvatarDraft();
 });
 $("#new-thread").addEventListener("click", async () => {
+  if (currentWindow && provider === "codex" && codexSignInRequired) {
+    settings.close();
+    promptForCodexSignIn();
+    return;
+  }
   const button = $("#new-thread") as HTMLButtonElement;
   button.disabled = true;
   state.manualStop = true;
@@ -1672,6 +1765,7 @@ $("#save-settings").addEventListener("click", async () => {
   }
   syncPermissionControls();
   settings.close();
+  if (restartCodex) void checkCodexSignIn(true);
 });
 for (const [selector, approved] of [["#approve", true], ["#deny", false]] as const) {
   $(selector).addEventListener("click", async () => { await invoke("resolve_server_request", { requestId: approvalId, approved }); approval.close(); });
@@ -1691,6 +1785,7 @@ if (currentWindow) {
     setWorker("orchestrator", "Wake word starting");
     setMode("ready");
     const backgroundStart = await invoke<boolean>("startup_is_background");
+    void checkCodexSignIn(!backgroundStart);
     if (!backgroundStart) {
       const microphoneAuthorization = await invoke<string>("request_microphone_permission");
       if (microphoneAuthorization !== "authorized") {

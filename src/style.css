@@ -87,6 +87,36 @@ html.visual-preview.transparency-grid,html.visual-preview.transparency-grid body
 .shell[data-provider="claude-code"] .dialogue p{max-height:none;overflow-wrap:anywhere}
 dialog{z-index:50}
 
+#chatgpt-sign-in {
+  width: min(430px, calc(100vw - 40px));
+  padding: 24px;
+  border-radius: 12px;
+}
+
+#chatgpt-sign-in p {
+  line-height: 1.5;
+}
+
+#chatgpt-sign-in-status:empty {
+  display: none;
+}
+
+.sign-in-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sign-in-actions button {
+  margin: 0;
+}
+
+#chatgpt-sign-in-start {
+  color: #04151d;
+  background: #79dcff;
+  font-weight: 650;
+}
+
 @keyframes minimal-character-float{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 8px))}}
 @keyframes minimal-materialize{0%,26%{opacity:0;filter:blur(18px) brightness(3.2) saturate(2);transform:scale(.84)}44%{opacity:.1;filter:blur(10px) brightness(2.8) saturate(1.9);transform:scale(.91)}68%{opacity:.38;filter:blur(4px) brightness(2.05) saturate(1.55);transform:scale(.97)}87%{opacity:.9;filter:blur(1px) brightness(1.4) saturate(1.25);transform:scale(1.015)}100%{opacity:1;filter:saturate(1.08) contrast(1.1) drop-shadow(0 0 24px rgba(var(--rgb),.54));transform:scale(var(--voice-pulse))}}
 @keyframes armor-shard-assemble{0%{opacity:0;transform:translate(var(--shard-x),var(--shard-y)) rotate(var(--shard-rotation)) scale(.62);filter:brightness(2.3) saturate(1.6) drop-shadow(0 0 22px #20c7ff)}12%{opacity:.96}68%{opacity:1;transform:translate(0,0) rotate(0) scale(1);filter:brightness(1.25) saturate(1.2) drop-shadow(0 0 12px #20c7ff)}84%{opacity:.92;transform:translate(0,0) rotate(0) scale(1)}100%{opacity:0;transform:translate(0,0) rotate(0) scale(1);filter:brightness(1.05) saturate(1.05) drop-shadow(0 0 4px rgba(32,199,255,.2))}}

@@ -1,4 +1,4 @@
-# MARK Codex for Windows 0.2.9
+# MARK Codex for Windows 0.2.10
 
 This Windows x64 edition includes the original helmet, Cyber Boy, Cyber Girl,
 blinking and reactions, customizable assistant identity and form of address,
@@ -18,6 +18,10 @@ Exit the old MARK version before opening this one. Existing settings use the sam
 application identity; each Windows user supplies their own sign-in and API keys.
 Saved conversations resume when Windows returns an equivalent path to their
 existing journal. New conversations can start while Codex creates their journal.
+
+With the bundled Codex runtime, Mark opens a Sign in with ChatGPT screen if
+Codex needs an account. Choose Sign in with ChatGPT and finish in your default
+browser. An existing Codex sign-in is reused.
 
 ## Window controls
 

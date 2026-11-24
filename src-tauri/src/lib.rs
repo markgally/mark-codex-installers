@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 mod claude_code;
+mod codex_sign_in;
 mod google_workspace;
 mod identity;
 mod conversation_context;
@@ -250,7 +251,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, ChildStdin, Command},
-    sync::{oneshot, Mutex, RwLock},
+    sync::{oneshot, watch, Mutex, RwLock},
     time::{timeout, Duration},
 };
 
@@ -260,6 +261,7 @@ struct AppState {
     claude_epoch: AtomicU64,
     claude_code: claude_code::ClaudeCodeRuntime,
     runtime: Mutex<Option<Arc<CodexRuntime>>>,
+    chatgpt_login: Mutex<Option<watch::Sender<bool>>>,
     cold_wake_pending: AtomicBool,
     background_start: bool,
     quitting: AtomicBool,
@@ -537,6 +539,7 @@ async fn request_microphone_permission() -> Result<String, String> {
 struct CodexRuntime {
     memory: context_manager::ContextManager,
     writer: Mutex<ChildStdin>,
+    login_result: watch::Sender<Option<codex_sign_in::LoginResult>>,
     child: Mutex<Child>,
     pending: Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>,
     next_id: AtomicU64,
@@ -683,6 +686,7 @@ impl CodexRuntime {
                 codex_binary.clone(),
             ),
             writer: Mutex::new(writer),
+            login_result: watch::channel(None).0,
             child: Mutex::new(child),
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
@@ -728,6 +732,16 @@ impl CodexRuntime {
                                 };
                                 let _ = sender.send(result);
                             }
+                        }
+                    }
+                    continue;
+                }
+                if message.get("method").and_then(Value::as_str) == Some("account/login/completed") {
+                    if let Some(runtime) = weak.upgrade() {
+                        if let Some(result) = message.get("params").cloned().and_then(|params| {
+                            serde_json::from_value::<codex_sign_in::LoginResult>(params).ok()
+                        }) {
+                            runtime.login_result.send_replace(Some(result));
                         }
                     }
                     continue;
@@ -809,6 +823,14 @@ impl CodexRuntime {
     async fn notify(&self, method: &str, params: Value) -> Result<(), String> {
         self.write(&json!({"method": method, "params": params}))
             .await
+    }
+
+    async fn initialize(&self) -> Result<(), String> {
+        self.request("initialize", json!({
+            "clientInfo": {"name": "jarvis-codex", "title": "Mark Codex", "version": env!("CARGO_PKG_VERSION")},
+            "capabilities": {"experimentalApi": true}
+        })).await?;
+        self.notify("initialized", json!({})).await
     }
 
     async fn thread(&self) -> Result<String, String> {
@@ -1163,11 +1185,7 @@ async fn list_codex_models(
     };
     let result = timeout(Duration::from_secs(12), async {
         if temporary {
-            runtime.request("initialize", json!({
-                "clientInfo": {"name": "jarvis-codex", "title": "Mark Codex", "version": env!("CARGO_PKG_VERSION")},
-                "capabilities": {"experimentalApi": true}
-            })).await?;
-            runtime.notify("initialized", json!({})).await?;
+            runtime.initialize().await?;
         }
         let response = runtime.request("model/list", json!({"limit": 100})).await?;
         codex_model_ids(&response)
@@ -1206,11 +1224,7 @@ async fn ensure_runtime(
     let profile = permission_mode.profile();
     let runtime =
         CodexRuntime::spawn(app, permission_mode, cwd.clone(), model.map(str::to_owned)).await?;
-    runtime.request("initialize", json!({
-        "clientInfo": {"name": "jarvis-codex", "title": "Mark Codex", "version": env!("CARGO_PKG_VERSION")},
-        "capabilities": {"experimentalApi": true}
-    })).await?;
-    runtime.notify("initialized", json!({})).await?;
+    runtime.initialize().await?;
     let mut thread_options = json!({
         "cwd": cwd,
         "approvalPolicy": profile.approval_policy,
@@ -1574,6 +1588,7 @@ fn request_application_exit(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") { let _ = window.hide(); }
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
+        let _ = codex_sign_in::cancel_chatgpt_login(app.state::<AppState>()).await;
         let pid = state.wake_pid.swap(0, Ordering::SeqCst);
         stop_wake_process(pid).await;
         // Bound graceful cancellation so an unresponsive provider cannot block Quit.
@@ -1626,6 +1641,7 @@ pub fn run() {
             claude_epoch: AtomicU64::new(0),
             claude_code: claude_code::ClaudeCodeRuntime::new(),
             runtime: Mutex::new(None),
+            chatgpt_login: Mutex::new(None),
             cold_wake_pending: AtomicBool::new(cold_wake_pending),
             background_start,
             quitting: AtomicBool::new(false),
@@ -1636,6 +1652,9 @@ pub fn run() {
             wake_authorization: RwLock::new("notDetermined".to_owned()),
         })
         .invoke_handler(tauri::generate_handler![
+            codex_sign_in::codex_sign_in_required,
+            codex_sign_in::sign_in_with_chatgpt,
+            codex_sign_in::cancel_chatgpt_login,
             window_controls::window_is_compact,
             window_controls::minimize_or_hide_window,
             window_controls::toggle_window_mode,
