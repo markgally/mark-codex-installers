@@ -22,7 +22,7 @@ The Windows executable workflow installs the dependencies and runs `npm run buil
 ## Which file to download
 
 - Mac computer: download `Mark.Codex_0.2.0_aarch64.zip`. This is the existing 0.2.0 application archive, not a v0.2.7 DMG. It contains only `Mark Codex.app`. GitHub lists it with a dot in place of the space in `Mark Codex`.
-- Windows computer: download `MARK-Codex-Windows-x64-Setup-0.2.8.zip`. It includes the Windows x64 app and its matching source archive. Version 0.2.8 adds standard Windows minimize, runtime checks on launch, and fixes saved conversation restore when Windows returns an equivalent journal path.
+- Windows computer: choose the Windows x64 setup ZIP on the Releases page. Build the 0.2.9 source branch for the fix that lets new conversations start before Codex writes their first journal record.
 
 Codex sign-in, API keys, Google accounts, and conversations are not inside either file. Each computer signs in on its own.
 

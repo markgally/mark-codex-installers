@@ -1,4 +1,4 @@
-# MARK Codex for Windows 0.2.8
+# MARK Codex for Windows 0.2.9
 
 This Windows x64 edition includes the original helmet, Cyber Boy, Cyber Girl,
 blinking and reactions, customizable assistant identity and form of address,
@@ -17,7 +17,7 @@ No Node.js or Rust is needed to run the release. Edge WebView2 Runtime is requir
 Exit the old MARK version before opening this one. Existing settings use the same
 application identity; each Windows user supplies their own sign-in and API keys.
 Saved conversations resume when Windows returns an equivalent path to their
-existing journal.
+existing journal. New conversations can start while Codex creates their journal.
 
 ## Window controls
 
