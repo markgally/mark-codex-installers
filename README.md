@@ -19,9 +19,24 @@ The certificate is issued to SignPath Foundation. The only file submitted for th
 
 The Windows executable workflow installs the dependencies and runs `npm run build` on `windows-latest`. Its artifact is `Mark Codex.exe`. Build tools for a local Windows build are described in [README-WINDOWS.md](README-WINDOWS.md).
 
+### Build on Mac
+
+Install Node.js 22, Rust stable, and the Xcode Command Line Tools. On an Apple Silicon Mac, run:
+
+```sh
+npm ci
+npm run wake:build
+npm run check
+npm run build
+```
+
+Tauri automatically loads `src-tauri/tauri.macos.conf.json` for the transparent Mac window, native wake helper, microphone permissions, and macOS 13 minimum. The Cargo feature and matching `macOSPrivateApi` setting enable the required Mac transparency support; these settings have no effect on Windows. The app and DMG are written under `src-tauri/target/release/bundle/`. Local Mac builds use ad hoc signing; they are not notarized.
+
+The checked-in Mac configuration comes from the local 0.2.7 build installed on the maintainer’s Mac. Shared app source remains at 0.2.7, and the Windows build configuration is preserved.
+
 ## Which file to download
 
-- Mac computer: download `Mark.Codex_0.2.0_aarch64.zip`. This is the existing 0.2.0 application archive, not a v0.2.7 DMG. It contains only `Mark Codex.app`. GitHub lists it with a dot in place of the space in `Mark Codex`.
+- Mac computer: download `MARK-Codex-Mac-arm64-0.2.7.zip`. This contains the 0.2.7 `Mark Codex.app` currently installed on the maintainer’s Mac. The older `Mark.Codex_0.2.0_aarch64.zip` remains available as a historical download.
 - Windows computer: download `MARK-Codex-Windows-x64-Setup-0.2.7.zip`. This is the 64-bit Windows setup archive for version 0.2.7. It also includes `MARK-Codex-Windows-Source-0.2.7.zip`, so the Windows source is in that same download.
 
 Codex sign-in, API keys, Google accounts, and conversations are not inside either file. Each computer signs in on its own.
@@ -30,7 +45,7 @@ Codex sign-in, API keys, Google accounts, and conversations are not inside eithe
 
 Requirements: Apple Silicon and macOS 13 or newer.
 
-1. Unzip `Mark.Codex_0.2.0_aarch64.zip`.
+1. Quit any running copy of Mark Codex, then unzip `MARK-Codex-Mac-arm64-0.2.7.zip`.
 2. Move `Mark Codex.app` to Applications.
 3. If macOS blocks the first open, right-click the app and choose Open.
 4. Allow the microphone and speech recognition when macOS asks.
